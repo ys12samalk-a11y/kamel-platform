@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+:root {
+  --primary: #1F4A3F;
+  --primary-light: #2E6B5A;
+  --gold: #C9A227;
+  --gold-light: #E0BC3E;
+  --bg: #F8FAF9;
+}
+
+body {
+  font-family: var(--font-cairo), system-ui, sans-serif;
+  background: var(--bg);
+}
+
+.text-primary { color: var(--primary); }
+.bg-primary { background: var(--primary); }
+.text-gold { color: var(--gold); }
+.bg-gold { background: var(--gold); }
