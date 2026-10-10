@@ -42,12 +42,6 @@ const menuItems = [
     color: "from-emerald-400 to-teal-500",
   },
   {
-    icon: Users,
-    label: "قوائم الفصول",
-    href: "/teacher/classes",
-    color: "from-sky-400 to-blue-500",
-  },
-  {
     icon: Calendar,
     label: "جدول الحصص",
     href: "/teacher/schedule",
