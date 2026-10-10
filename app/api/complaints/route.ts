@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+import { createNotification } from "@/lib/notifications";
 
 // GET: جلب الشكاوى
 export async function GET(request: NextRequest) {
@@ -113,6 +114,33 @@ export async function PATCH(request: NextRequest) {
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // ✅ بعت إشعار للطالب لو مش مجهول
+    if (data && data.student_code && !data.is_anonymous) {
+      try {
+        // لو في رد من الإدارة
+        if (admin_response && admin_response.trim()) {
+          await createNotification(
+            data.student_code,
+            `💬 الإدارة ردت على رسالتك`,
+            `"${data.title}" — ${admin_response.trim().substring(0, 80)}`,
+            "info",
+            "/student/complaints"
+          );
+        } else if (status === "resolved") {
+          // لو تم الحل من غير رد
+          await createNotification(
+            data.student_code,
+            `✅ تم حل رسالتك`,
+            `"${data.title}" — تم التعامل مع شكوتك/اقتراحك`,
+            "info",
+            "/student/complaints"
+          );
+        }
+      } catch (notifErr) {
+        console.error("Notification error:", notifErr);
+      }
     }
 
     return NextResponse.json({ success: true, complaint: data });

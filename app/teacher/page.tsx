@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import NotificationBell from "@/components/NotificationBell";
 import {
   Users,
   FileText,
@@ -14,7 +15,6 @@ import {
   Menu,
   X,
   User,
-  Bell,
   CheckCircle2,
   TrendingUp,
   BookOpen,
@@ -121,13 +121,9 @@ export default function TeacherPage() {
 
     const loadStats = async () => {
       try {
-        // عدد الدرجات
-        const gradesRes = await fetch(
-          `/api/grades?teacher=${user.code}`
-        );
+        const gradesRes = await fetch(`/api/grades?teacher=${user.code}`);
         const gradesData = await gradesRes.json();
 
-        // عدد الغياب النهاردة
         const today = new Date().toISOString().split("T")[0];
         const attRes = await fetch(`/api/attendance?date=${today}`);
         const attData = await attRes.json();
@@ -256,10 +252,7 @@ export default function TeacherPage() {
             </div>
 
             <div className="flex items-center gap-3">
-              <button className="relative p-2 rounded-xl hover:bg-gray-100 transition">
-                <Bell className="w-5 h-5 text-gray-600" />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full" />
-              </button>
+              <NotificationBell />
               <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#1F4A3F] to-[#2E6B5A] flex items-center justify-center text-white font-bold shadow-lg">
                 {user.full_name?.charAt(0) || <User className="w-5 h-5" />}
               </div>
@@ -343,9 +336,7 @@ export default function TeacherPage() {
                   <Users className="w-6 h-6 text-white" />
                 </div>
               </div>
-              <p className="text-3xl font-bold text-[#1F4A3F]">
-                {user.subject ? "—" : "—"}
-              </p>
+              <p className="text-3xl font-bold text-[#1F4A3F]">—</p>
               <p className="text-xs text-gray-500 mt-1">عدد فصولك</p>
             </motion.div>
           </div>

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+import { createNotification } from "@/lib/notifications";
 
 // GET: جلب المواهب
 export async function GET(request: NextRequest) {
@@ -120,6 +121,21 @@ export async function PATCH(request: NextRequest) {
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // ✅ بعت إشعار للطالب صاحب الموهبة
+    if (is_featured === true && data) {
+      try {
+        await createNotification(
+          data.student_code,
+          `👑 مبروك! موهبتك مميزة الأسبوع`,
+          `"${data.title}" اختارتها الإدارة كأفضل موهبة هذا الأسبوع! 🎉`,
+          "talent",
+          "/student/talents"
+        );
+      } catch (notifErr) {
+        console.error("Notification error:", notifErr);
+      }
     }
 
     return NextResponse.json({ success: true, talent: data });

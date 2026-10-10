@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import NotificationBell from "@/components/NotificationBell";
 import {
   Calendar,
   Trophy,
@@ -15,7 +16,6 @@ import {
   Menu,
   X,
   User,
-  Bell,
   FileText,
   Megaphone,
   Settings,
@@ -289,10 +289,7 @@ export default function StudentPage() {
               >
                 <Settings className="w-5 h-5 text-gray-600" />
               </a>
-              <button className="relative p-2 rounded-xl hover:bg-gray-100 transition">
-                <Bell className="w-5 h-5 text-gray-600" />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full" />
-              </button>
+              <NotificationBell />
               <a
                 href="/student/profile"
                 className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#1F4A3F] to-[#2E6B5A] flex items-center justify-center text-white font-bold shadow-lg hover:shadow-xl transition"

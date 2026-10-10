@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+import { createNotification } from "@/lib/notifications";
 
 // GET: جلب الدرجات
 export async function GET(request: NextRequest) {
@@ -14,15 +15,9 @@ export async function GET(request: NextRequest) {
       .select("*")
       .order("created_at", { ascending: false });
 
-    if (studentCode) {
-      query = query.eq("student_code", studentCode);
-    }
-    if (teacherCode) {
-      query = query.eq("teacher_code", teacherCode);
-    }
-    if (subject && subject !== "all") {
-      query = query.eq("subject", subject);
-    }
+    if (studentCode) query = query.eq("student_code", studentCode);
+    if (teacherCode) query = query.eq("teacher_code", teacherCode);
+    if (subject && subject !== "all") query = query.eq("subject", subject);
 
     const { data, error } = await query;
 
@@ -92,6 +87,26 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // ✅ بعت إشعار للطالب
+    try {
+      const percentage = Math.round(
+        (Number(score) / (Number(max_score) || 100)) * 100
+      );
+
+      const emoji =
+        percentage >= 85 ? "🌟" : percentage >= 60 ? "📊" : "📝";
+
+      await createNotification(
+        student_code,
+        `${emoji} درجة جديدة في ${subject}`,
+        `${exam_name}: ${score} / ${max_score} — نسبتك ${percentage}%`,
+        "info",
+        "/student"
+      );
+    } catch (notifErr) {
+      console.error("Notification error:", notifErr);
     }
 
     return NextResponse.json({ success: true, grade: data });

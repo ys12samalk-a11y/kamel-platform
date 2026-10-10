@@ -24,7 +24,6 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query;
 
     if (error) {
-      console.error("Fetch assessments error:", error);
       return NextResponse.json(
         { error: "حدث خطأ أثناء جلب التقييمات" },
         { status: 500 }
@@ -35,16 +34,15 @@ export async function GET(request: NextRequest) {
       success: true,
       assessments: data || [],
     });
-  } catch (error) {
-    console.error("Get assessments error:", error);
+  } catch (error: any) {
     return NextResponse.json(
-      { error: "حدث خطأ في السيرفر" },
+      { error: error?.message || "حدث خطأ" },
       { status: 500 }
     );
   }
 }
 
-// POST: زيادة عداد التحميلات
+// POST: زيادة عداد التحميل
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -57,7 +55,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // نجيب العداد الحالي
     const { data: current } = await supabase
       .from("assessments")
       .select("download_count")
@@ -66,21 +63,17 @@ export async function POST(request: NextRequest) {
 
     const newCount = (current?.download_count || 0) + 1;
 
-    // نحدث
     await supabase
       .from("assessments")
       .update({ download_count: newCount })
       .eq("id", id);
 
     return NextResponse.json({ success: true, count: newCount });
-  } catch (error) {
-    console.error("Increment error:", error);
-    return NextResponse.json(
-      { error: "حدث خطأ" },
-      { status: 500 }
-    );
+  } catch (error: any) {
+    return NextResponse.json({ error: "حدث خطأ" }, { status: 500 });
   }
 }
+
 // DELETE: حذف تقييم
 export async function DELETE(request: NextRequest) {
   try {
@@ -100,16 +93,11 @@ export async function DELETE(request: NextRequest) {
       .eq("id", id);
 
     if (error) {
-      console.error("Delete error:", error);
-      return NextResponse.json(
-        { error: error.message },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.error("Catch error:", error);
     return NextResponse.json(
       { error: error?.message || "حدث خطأ" },
       { status: 500 }

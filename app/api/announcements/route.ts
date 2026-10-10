@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+import {
+  notifyGrade,
+  notifyClass,
+  notifyAllStudents,
+} from "@/lib/notifications";
 
+// GET: جلب الإعلانات
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -35,6 +41,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// POST: إضافة إعلان جديد
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -46,6 +53,7 @@ export async function POST(request: NextRequest) {
       grade,
       class: className,
       priority,
+      target,
     } = body;
 
     if (!title || !announcementBody || !teacher_code) {
@@ -61,7 +69,7 @@ export async function POST(request: NextRequest) {
         teacher_name: teacher_name || null,
         grade: grade || null,
         class: className || null,
-        target: "class",
+        target: target || "class",
         priority: priority || "normal",
       })
       .select()
@@ -69,6 +77,48 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // ✅ بعت إشعارات للطلاب المستهدفين
+    try {
+      const notifTitle = `📢 إعلان جديد: ${title.trim()}`;
+      const notifMessage = announcementBody.trim().substring(0, 100);
+
+      // لو الإعلان لفصل معين
+      if (grade && className) {
+        await notifyClass(
+          grade,
+          className,
+          notifTitle,
+          notifMessage,
+          "announcement",
+          "/student/announcements"
+        );
+      }
+      // لو الإعلان لصف معين
+      else if (grade) {
+        await notifyGrade(
+          grade,
+          notifTitle,
+          notifMessage,
+          "announcement",
+          "/student/announcements"
+        );
+      }
+      // لو الإعلان لكل المدرسة
+      else {
+        await notifyAllStudents(
+          notifTitle,
+          notifMessage,
+          "announcement",
+          "/student/announcements"
+        );
+      }
+
+      console.log("✅ Notifications sent successfully");
+    } catch (notifErr) {
+      console.error("❌ Notification error:", notifErr);
+      // مش هنوقف الإعلان لو الإشعار فشل
     }
 
     return NextResponse.json({ success: true, announcement: data });
@@ -80,6 +130,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// DELETE: حذف إعلان
 export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);

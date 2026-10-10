@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+import { notifyAllStudents } from "@/lib/notifications";
 
 // GET: جلب المسابقات
 export async function GET(request: NextRequest) {
@@ -99,6 +100,33 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // ✅ بعت إشعارات لكل الطلاب
+    try {
+      const categoryLabel =
+        category === "programming"
+          ? "برمجة"
+          : category === "design"
+          ? "تصميم"
+          : category === "art"
+          ? "رسم"
+          : category === "writing"
+          ? "كتابة"
+          : category === "science"
+          ? "علوم"
+          : "عام";
+
+      await notifyAllStudents(
+        `🏆 مسابقة جديدة: ${title.trim()}`,
+        `مسابقة ${categoryLabel}${
+          prize ? ` — الجايزة: ${prize}` : ""
+        }. شارك الآن واكسب جوائز!`,
+        "competition",
+        "/student/competitions"
+      );
+    } catch (notifErr) {
+      console.error("Notification error:", notifErr);
     }
 
     return NextResponse.json({ success: true, competition: data });
