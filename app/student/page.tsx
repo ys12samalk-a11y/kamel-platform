@@ -18,6 +18,7 @@ import {
   Bell,
   FileText,
   Megaphone,
+  Settings,
 } from "lucide-react";
 
 type UserData = {
@@ -72,6 +73,12 @@ const menuItems = [
     label: "شكاوى واقتراحات",
     href: "/student/complaints",
     color: "from-cyan-400 to-teal-500",
+  },
+  {
+    icon: User,
+    label: "الملف الشخصي",
+    href: "/student/profile",
+    color: "from-amber-400 to-orange-500",
   },
 ];
 
@@ -275,13 +282,23 @@ export default function StudentPage() {
             </div>
 
             <div className="flex items-center gap-3">
+              <a
+                href="/student/profile"
+                className="relative p-2 rounded-xl hover:bg-gray-100 transition"
+                title="الملف الشخصي"
+              >
+                <Settings className="w-5 h-5 text-gray-600" />
+              </a>
               <button className="relative p-2 rounded-xl hover:bg-gray-100 transition">
                 <Bell className="w-5 h-5 text-gray-600" />
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full" />
               </button>
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#1F4A3F] to-[#2E6B5A] flex items-center justify-center text-white font-bold shadow-lg">
+              <a
+                href="/student/profile"
+                className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#1F4A3F] to-[#2E6B5A] flex items-center justify-center text-white font-bold shadow-lg hover:shadow-xl transition"
+              >
                 {user.full_name?.charAt(0) || <User className="w-5 h-5" />}
-              </div>
+              </a>
             </div>
           </div>
         </header>
