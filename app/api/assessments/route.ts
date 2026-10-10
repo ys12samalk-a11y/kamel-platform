@@ -81,3 +81,38 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+// DELETE: حذف تقييم
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+
+    if (!id) {
+      return NextResponse.json(
+        { error: "المعرّف مطلوب" },
+        { status: 400 }
+      );
+    }
+
+    const { error } = await supabase
+      .from("assessments")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      console.error("Delete error:", error);
+      return NextResponse.json(
+        { error: error.message },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error("Catch error:", error);
+    return NextResponse.json(
+      { error: error?.message || "حدث خطأ" },
+      { status: 500 }
+    );
+  }
+}
