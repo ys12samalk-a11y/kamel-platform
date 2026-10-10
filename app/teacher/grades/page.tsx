@@ -81,9 +81,11 @@ export default function TeacherGradesPage() {
   const [examType, setExamType] = useState("");
   const [examName, setExamName] = useState("");
   const [maxScore, setMaxScore] = useState("100");
-  const [examDate, setExamDate] = useState(
-    new Date().toISOString().split("T")[0]
-  );
+ const [examDate, setExamDate] = useState("");
+
+useEffect(() => {
+  setExamDate(new Date().toISOString().split("T")[0]);
+}, []);
 
   // درجات الطلاب
   const [scores, setScores] = useState<Record<string, string>>({});
