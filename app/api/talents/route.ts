@@ -7,6 +7,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const studentCode = searchParams.get("student");
     const category = searchParams.get("category");
+    const featured = searchParams.get("featured");
+    const grade = searchParams.get("grade");
     const limit = searchParams.get("limit");
 
     let query = supabase
@@ -17,6 +19,8 @@ export async function GET(request: NextRequest) {
 
     if (studentCode) query = query.eq("student_code", studentCode);
     if (category && category !== "all") query = query.eq("category", category);
+    if (featured === "true") query = query.eq("is_featured", true);
+    if (grade && grade !== "all") query = query.eq("grade", grade);
     if (limit) query = query.limit(Number(limit));
 
     const { data, error } = await query;
@@ -73,6 +77,44 @@ export async function POST(request: NextRequest) {
         media_url: media_url || null,
         media_type: media_type || null,
       })
+      .select()
+      .single();
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, talent: data });
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error?.message || "حدث خطأ" },
+      { status: 500 }
+    );
+  }
+}
+
+// PATCH: تعيين "موهبة الأسبوع"
+export async function PATCH(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { id, is_featured } = body;
+
+    if (!id) {
+      return NextResponse.json({ error: "المعرّف مطلوب" }, { status: 400 });
+    }
+
+    // لو بنخليها "موهبة الأسبوع"، نشيل العلامة من الباقي
+    if (is_featured === true) {
+      await supabase
+        .from("talents")
+        .update({ is_featured: false })
+        .eq("is_featured", true);
+    }
+
+    const { data, error } = await supabase
+      .from("talents")
+      .update({ is_featured })
+      .eq("id", id)
       .select()
       .single();
 
