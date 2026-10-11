@@ -18,6 +18,7 @@ import {
   CheckCircle2,
   TrendingUp,
   BookOpen,
+  Settings,
 } from "lucide-react";
 
 type UserData = {
@@ -52,6 +53,12 @@ const menuItems = [
     label: "إعلانات الفصل",
     href: "/teacher/announcements",
     color: "from-rose-400 to-pink-500",
+  },
+  {
+    icon: Settings,
+    label: "الإعدادات",
+    href: "/teacher/settings",
+    color: "from-gray-400 to-slate-500",
   },
 ];
 
@@ -251,11 +258,22 @@ export default function TeacherPage() {
               </p>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <NotificationBell />
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#1F4A3F] to-[#2E6B5A] flex items-center justify-center text-white font-bold shadow-lg">
+              <a
+                href="/teacher/settings"
+                className="relative p-2 rounded-xl hover:bg-gray-100 transition"
+                title="الإعدادات"
+              >
+                <Settings className="w-5 h-5 text-gray-600" />
+              </a>
+              <a
+                href="/teacher/settings"
+                className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#1F4A3F] to-[#2E6B5A] flex items-center justify-center text-white font-bold shadow-lg hover:shadow-xl transition"
+                title="الملف الشخصي"
+              >
                 {user.full_name?.charAt(0) || <User className="w-5 h-5" />}
-              </div>
+              </a>
             </div>
           </div>
         </header>
