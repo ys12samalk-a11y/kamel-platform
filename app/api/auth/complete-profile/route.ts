@@ -21,6 +21,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ✅ نتأكد إن المستخدم مش ولي أمر (لأن الإدارة بتعمل حساباتهم كاملة)
+    const { data: checkUser } = await supabase
+      .from("users")
+      .select("role")
+      .eq("code", code.trim().toUpperCase())
+      .single();
+
+    if (checkUser?.role === "parent") {
+      return NextResponse.json(
+        { error: "حساب ولي الأمر مش محتاج استكمال بيانات" },
+        { status: 400 }
+      );
+    }
+
     // تحديث البيانات في Supabase
     const { data, error } = await supabase
       .from("users")

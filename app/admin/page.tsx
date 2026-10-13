@@ -81,6 +81,12 @@ const menuItems = [
     color: "from-yellow-400 to-amber-500",
   },
   {
+    icon: Users,
+    label: "أولياء الأمور",
+    href: "/admin/parents",
+    color: "from-cyan-400 to-sky-500",
+  },
+  {
     icon: Settings,
     label: "الإعدادات",
     href: "/admin/settings",

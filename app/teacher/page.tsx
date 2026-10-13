@@ -19,6 +19,7 @@ import {
   TrendingUp,
   BookOpen,
   Settings,
+  Bell,
 } from "lucide-react";
 
 type UserData = {
@@ -55,6 +56,12 @@ const menuItems = [
     color: "from-rose-400 to-pink-500",
   },
   {
+    icon: Bell,
+    label: "إرسال إشعار",
+    href: "/teacher/notify-parent",
+    color: "from-cyan-400 to-sky-500",
+  },
+  {
     icon: Settings,
     label: "الإعدادات",
     href: "/teacher/settings",
@@ -78,11 +85,11 @@ const quickCards = [
     href: "/teacher/attendance",
   },
   {
-    icon: Users,
-    title: "قوائم الفصول",
-    desc: "اعرض طلاب فصولك",
-    color: "from-sky-400 to-blue-500",
-    href: "/teacher/classes",
+    icon: Bell,
+    title: "إرسال إشعار",
+    desc: "ابعت رسالة لولي أمر",
+    color: "from-cyan-400 to-sky-500",
+    href: "/teacher/notify-parent",
   },
   {
     icon: Megaphone,
