@@ -33,11 +33,14 @@ type GradeRecord = {
   notes: string;
 };
 
-const grades = [
+// القوايم دي للاستخدام في حالة لو المدرس ملوش صلاحيات محددة
+const allGrades = [
   { value: "1", label: "أولى ثانوي" },
   { value: "2", label: "تانية ثانوي" },
   { value: "3", label: "تالتة ثانوي" },
 ];
+
+const allClasses = Array.from({ length: 15 }, (_, i) => String(i + 1));
 
 const months = [
   { value: "10", label: "أكتوبر" },
@@ -68,6 +71,15 @@ export default function WeeklyGradesPage() {
   const [selectedMonth, setSelectedMonth] = useState("");
   const [selectedWeek, setSelectedWeek] = useState("");
 
+  // ✨ الصفوف والفصول المتاحة للمدرس
+  const [availableGrades, setAvailableGrades] = useState(allGrades);
+  const [availableClasses, setAvailableClasses] = useState(allClasses);
+
+  // ✨ نحفظ grades_classes بتاع المدرس
+  const [gradesClasses, setGradesClasses] = useState<Record<string, string[]>>(
+    {}
+  );
+
   useEffect(() => {
     const stored = localStorage.getItem("user");
     if (!stored) {
@@ -81,10 +93,74 @@ export default function WeeklyGradesPage() {
         return;
       }
       setUser(parsed);
+
+      // نجيب أحدث البيانات من الـ API
+      const loadUser = async () => {
+        try {
+          const res = await fetch(`/api/profile?code=${parsed.code}`);
+          const data = await res.json();
+          if (data.success) {
+            const updated = { ...parsed, ...data.user };
+            setUser(updated);
+            localStorage.setItem("user", JSON.stringify(updated));
+
+            // ✨ نحدد الصفوف المتاحة
+            const teacherGrades: string[] = data.user.grades || [];
+            if (teacherGrades.length > 0) {
+              const filtered = allGrades.filter((g) =>
+                teacherGrades.includes(g.value)
+              );
+              setAvailableGrades(filtered);
+            }
+
+            // ✨ نحفظ grades_classes
+            const gc: Record<string, string[]> =
+              data.user.grades_classes || {};
+            setGradesClasses(gc);
+
+            // ✨ لو مفيش صف محدد بعد، نعرض الفصول من grades_classes
+            // بس لما الصف يتحدد هنعرض الفصول بتاعته
+            if (teacherGrades.length === 0) {
+              // لو مفيش صلاحيات محددة، نعرض كل الفصول
+              setAvailableClasses(allClasses);
+            } else {
+              // نعرض فاضي لحد ما الصف يتحدد
+              setAvailableClasses([]);
+            }
+          }
+        } catch (err) {
+          console.error(err);
+        }
+      };
+      loadUser();
     } catch {
       router.push("/login");
     }
   }, [router]);
+
+  // ✨ لما الصف يتغير، نحدّث الفصول المتاحة
+  useEffect(() => {
+    if (!selectedGrade) {
+      setAvailableClasses([]);
+      return;
+    }
+
+    // لو الصف ده عنده فصول محددة في grades_classes
+    if (gradesClasses[selectedGrade]) {
+      const gradeClasses = gradesClasses[selectedGrade] || [];
+      const filtered = allClasses.filter((c) => gradeClasses.includes(c));
+      setAvailableClasses(filtered);
+    } else {
+      // لو مفيش، نعرض كل الفصول (الحالة الاحتياطية)
+      setAvailableClasses(allClasses);
+    }
+
+    // نصفّر الفصل المختار
+    setSelectedClass("");
+    setStudents([]);
+    setGradesData({});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedGrade]);
 
   // تحميل الطلاب + الدرجات
   const loadData = async () => {
@@ -101,7 +177,6 @@ export default function WeeklyGradesPage() {
     setError("");
 
     try {
-      // 1. نجيب الطلاب
       const studentsRes = await fetch(
         `/api/teacher/students?grade=${selectedGrade}&class=${selectedClass}`
       );
@@ -116,7 +191,6 @@ export default function WeeklyGradesPage() {
       const studentsList = studentsData.students || [];
       setStudents(studentsList);
 
-      // 2. نجيب الدرجات المحفوظة
       const gradesRes = await fetch(
         `/api/weekly-grades?grade=${selectedGrade}&class=${selectedClass}&month=${selectedMonth}&week=${selectedWeek}&subject=${
           user.subject || ""
@@ -128,7 +202,6 @@ export default function WeeklyGradesPage() {
         ? gradesApiData.grades
         : [];
 
-      // 3. نبني قاموس الدرجات
       const map: Record<string, GradeRecord> = {};
       studentsList.forEach((s: Student) => {
         const saved = savedGrades.find((g) => g.student_code === s.code);
@@ -153,9 +226,9 @@ export default function WeeklyGradesPage() {
 
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedGrade, selectedClass, selectedMonth, selectedWeek]);
 
-  // تحديث درجة
   const updateScore = (
     studentCode: string,
     field: keyof GradeRecord,
@@ -170,7 +243,6 @@ export default function WeeklyGradesPage() {
     });
   };
 
-  // حساب المجموع
   const calculateTotal = (record: GradeRecord) => {
     const a = Number(record.assessment_score) || 0;
     const b = Number(record.behavior_score) || 0;
@@ -178,7 +250,6 @@ export default function WeeklyGradesPage() {
     return a + b + n;
   };
 
-  // حفظ
   const handleSave = async () => {
     setError("");
     setSuccess("");
@@ -244,6 +315,10 @@ export default function WeeklyGradesPage() {
   const allFiltersSelected =
     selectedGrade && selectedClass && selectedMonth && selectedWeek;
 
+  const hasLimitedPermissions =
+    availableGrades.length < allGrades.length ||
+    Object.keys(gradesClasses).length > 0;
+
   return (
     <main className="min-h-screen bg-[#FAFBFC] relative overflow-hidden">
       <div className="fixed inset-0 -z-10 overflow-hidden">
@@ -278,6 +353,21 @@ export default function WeeklyGradesPage() {
           </button>
         </div>
 
+        {/* Info Banner */}
+        {hasLimitedPermissions && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="p-4 rounded-2xl bg-sky-50 border border-sky-100 mb-4 flex items-start gap-3"
+          >
+            <Sparkles className="w-5 h-5 text-sky-600 flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-sky-800 leading-relaxed">
+              <strong>ملاحظة:</strong> الفلاتر بتعرض بس الصفوف والفصول اللي
+              الإدارة حددتها لك.
+            </div>
+          </motion.div>
+        )}
+
         {/* Filters */}
         <div className="p-6 rounded-3xl bg-white/80 backdrop-blur border border-white/60 shadow-sm mb-6">
           <h2 className="font-bold text-lg text-[#1F4A3F] mb-5 flex items-center gap-2">
@@ -293,16 +383,11 @@ export default function WeeklyGradesPage() {
               </label>
               <select
                 value={selectedGrade}
-                onChange={(e) => {
-                  setSelectedGrade(e.target.value);
-                  setSelectedClass("");
-                  setStudents([]);
-                  setGradesData({});
-                }}
+                onChange={(e) => setSelectedGrade(e.target.value)}
                 className="w-full px-4 py-3 rounded-2xl bg-white border border-gray-200 focus:border-[#C9A227] focus:ring-2 focus:ring-[#C9A227]/20 outline-none cursor-pointer"
               >
                 <option value="">اختر الصف</option>
-                {grades.map((g) => (
+                {availableGrades.map((g) => (
                   <option key={g.value} value={g.value}>
                     {g.label}
                   </option>
@@ -314,6 +399,11 @@ export default function WeeklyGradesPage() {
             <div>
               <label className="block text-sm font-medium text-[#1F4A3F] mb-2">
                 الفصل
+                {selectedGrade && (
+                  <span className="text-xs text-gray-400 mr-2">
+                    ({availableClasses.length} متاح)
+                  </span>
+                )}
               </label>
               <select
                 value={selectedClass}
@@ -321,10 +411,12 @@ export default function WeeklyGradesPage() {
                 disabled={!selectedGrade}
                 className="w-full px-4 py-3 rounded-2xl bg-white border border-gray-200 focus:border-[#C9A227] focus:ring-2 focus:ring-[#C9A227]/20 outline-none cursor-pointer disabled:opacity-50"
               >
-                <option value="">اختر الفصل</option>
-                {Array.from({ length: 15 }, (_, i) => i + 1).map((n) => (
-                  <option key={n} value={String(n)}>
-                    فصل {n}
+                <option value="">
+                  {!selectedGrade ? "اختر الصف الأول" : "اختر الفصل"}
+                </option>
+                {availableClasses.map((c) => (
+                  <option key={c} value={c}>
+                    فصل {c}
                   </option>
                 ))}
               </select>
@@ -406,8 +498,9 @@ export default function WeeklyGradesPage() {
               </div>
               <div>
                 <p className="font-bold text-[#1F4A3F] text-sm">
-                  {grades.find((g) => g.value === selectedGrade)?.label} —
-                  فصل {selectedClass} — {months.find((m) => m.value === selectedMonth)?.label} —{" "}
+                  {allGrades.find((g) => g.value === selectedGrade)?.label} —
+                  فصل {selectedClass} —{" "}
+                  {months.find((m) => m.value === selectedMonth)?.label} —{" "}
                   {weeks.find((w) => w.value === selectedWeek)?.label}
                 </p>
                 <p className="text-xs text-gray-500">
@@ -486,7 +579,6 @@ export default function WeeklyGradesPage() {
                           </p>
                         </td>
 
-                        {/* التقييم (15) */}
                         <td className="px-4 py-3">
                           <input
                             type="number"
@@ -508,7 +600,6 @@ export default function WeeklyGradesPage() {
                           />
                         </td>
 
-                        {/* كشكول الحصة (15) */}
                         <td className="px-4 py-3">
                           <input
                             type="number"
@@ -526,7 +617,6 @@ export default function WeeklyGradesPage() {
                           />
                         </td>
 
-                        {/* السلوك (10) */}
                         <td className="px-4 py-3">
                           <input
                             type="number"
@@ -544,7 +634,6 @@ export default function WeeklyGradesPage() {
                           />
                         </td>
 
-                        {/* المجموع */}
                         <td className="px-4 py-3 text-center bg-[#1F4A3F]/5">
                           <span
                             className={`inline-flex items-center justify-center w-16 h-10 rounded-xl font-bold text-lg ${

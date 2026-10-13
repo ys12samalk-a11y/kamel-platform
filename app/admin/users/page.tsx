@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Users,
   Search,
@@ -20,6 +20,8 @@ import {
   Settings,
   Save,
   AlertCircle,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 
 type UserData = {
@@ -33,6 +35,7 @@ type UserData = {
   phone: string | null;
   grades: string[] | null;
   classes: string[] | null;
+  grades_classes: Record<string, string[]> | null;
   profile_completed: boolean;
   status: string;
   last_login: string | null;
@@ -97,8 +100,8 @@ export default function AdminUsersPage() {
     full_name: "",
     subject: "",
     phone: "",
-    grades: [] as string[],
-    classes: [] as string[],
+    gradesData: {} as Record<string, string[]>,
+    expandedGrade: "" as string | null,
   });
   const [saving, setSaving] = useState(false);
   const [modalError, setModalError] = useState("");
@@ -123,7 +126,7 @@ export default function AdminUsersPage() {
     }
   }, [router]);
 
-  // تحميل المستخدمين — ⚠️ اتصلّح: useRef لمنع التكرار
+  // تحميل المستخدمين
   useEffect(() => {
     if (!user || user.role !== "admin") return;
 
@@ -180,38 +183,86 @@ export default function AdminUsersPage() {
   // فتح Modal
   const openEditModal = (teacher: UserData) => {
     setEditingTeacher(teacher);
+
+    let initialGradesData: Record<string, string[]> = {};
+
+    if (
+      teacher.grades_classes &&
+      typeof teacher.grades_classes === "object" &&
+      Object.keys(teacher.grades_classes).length > 0
+    ) {
+      initialGradesData = { ...teacher.grades_classes };
+    } else if (
+      teacher.grades &&
+      teacher.grades.length > 0 &&
+      teacher.classes &&
+      teacher.classes.length > 0
+    ) {
+      // توافق مع البيانات القديمة
+      teacher.grades.forEach((g) => {
+        initialGradesData[g] = teacher.classes || [];
+      });
+    }
+
     setEditForm({
       full_name: teacher.full_name || "",
       subject: teacher.subject || "",
       phone: teacher.phone || "",
-      grades: teacher.grades || [],
-      classes: teacher.classes || [],
+      gradesData: initialGradesData,
+      expandedGrade: null,
     });
     setModalError("");
     setModalSuccess("");
   };
 
-  // تبديل صف
-  const toggleGrade = (g: string) => {
+  // تبديل الصف
+  const toggleGradeSelection = (g: string) => {
+    const newData = { ...editForm.gradesData };
+
+    if (newData[g]) {
+      delete newData[g];
+      setEditForm({ ...editForm, gradesData: newData, expandedGrade: null });
+    } else {
+      newData[g] = [];
+      setEditForm({ ...editForm, gradesData: newData, expandedGrade: g });
+    }
+  };
+
+  // تبديل فصل داخل صف
+  const toggleClassInGrade = (grade: string, c: string) => {
+    const currentClasses = editForm.gradesData[grade] || [];
+    const newClasses = currentClasses.includes(c)
+      ? currentClasses.filter((x) => x !== c)
+      : [...currentClasses, c];
+
     setEditForm({
       ...editForm,
-      grades: editForm.grades.includes(g)
-        ? editForm.grades.filter((x) => x !== g)
-        : [...editForm.grades, g],
+      gradesData: { ...editForm.gradesData, [grade]: newClasses },
     });
   };
 
-  // تبديل فصل
-  const toggleClass = (c: string) => {
+  const selectAllClassesInGrade = (grade: string) => {
     setEditForm({
       ...editForm,
-      classes: editForm.classes.includes(c)
-        ? editForm.classes.filter((x) => x !== c)
-        : [...editForm.classes, c],
+      gradesData: { ...editForm.gradesData, [grade]: allClasses },
     });
   };
 
-  // حفظ تعديلات المدرس
+  const clearClassesInGrade = (grade: string) => {
+    setEditForm({
+      ...editForm,
+      gradesData: { ...editForm.gradesData, [grade]: [] },
+    });
+  };
+
+  const toggleExpand = (grade: string) => {
+    setEditForm({
+      ...editForm,
+      expandedGrade: editForm.expandedGrade === grade ? null : grade,
+    });
+  };
+
+  // حفظ
   const handleSaveTeacher = async () => {
     if (!editingTeacher) return;
     setModalError("");
@@ -219,6 +270,13 @@ export default function AdminUsersPage() {
     setSaving(true);
 
     try {
+      const grades = Object.keys(editForm.gradesData);
+      const allClassesSet = new Set<string>();
+      Object.values(editForm.gradesData).forEach((classes) => {
+        classes.forEach((c) => allClassesSet.add(c));
+      });
+      const classes = Array.from(allClassesSet);
+
       const res = await fetch("/api/admin/update-teacher", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -227,8 +285,9 @@ export default function AdminUsersPage() {
           full_name: editForm.full_name.trim(),
           subject: editForm.subject.trim(),
           phone: editForm.phone.trim() || null,
-          grades: editForm.grades,
-          classes: editForm.classes,
+          grades,
+          classes,
+          grades_classes: editForm.gradesData,
         }),
       });
 
@@ -242,20 +301,29 @@ export default function AdminUsersPage() {
 
       setModalSuccess("تم حفظ التعديلات بنجاح! ✅");
 
-      setUsers(
-        users.map((u) =>
-          u.code === editingTeacher.code
-            ? {
-                ...u,
-                full_name: editForm.full_name.trim(),
-                subject: editForm.subject.trim(),
-                phone: editForm.phone.trim() || null,
-                grades: editForm.grades,
-                classes: editForm.classes,
-              }
-            : u
-        )
+      const updatedUser: UserData = {
+        ...editingTeacher,
+        full_name: editForm.full_name.trim(),
+        subject: editForm.subject.trim(),
+        phone: editForm.phone.trim() || null,
+        grades,
+        classes,
+        grades_classes: editForm.gradesData,
+      };
+
+      setUsers((prev) =>
+        prev.map((u) => (u.code === editingTeacher.code ? updatedUser : u))
       );
+
+      setTimeout(async () => {
+        try {
+          const res = await fetch("/api/admin/users");
+          const data = await res.json();
+          if (data.success) setUsers(data.users);
+        } catch (err) {
+          console.error(err);
+        }
+      }, 800);
 
       setTimeout(() => {
         setModalSuccess("");
@@ -314,7 +382,6 @@ export default function AdminUsersPage() {
     }
   };
 
-  // إحصائيات
   const stats = {
     total: users.length,
     students: users.filter((u) => u.role === "student").length,
@@ -494,8 +561,8 @@ export default function AdminUsersPage() {
               <div className="col-span-2">الكود</div>
               <div className="col-span-3">الاسم</div>
               <div className="col-span-2">النوع</div>
-              <div className="col-span-2">الصف/الفصل</div>
-              <div className="col-span-2">الحالة</div>
+              <div className="col-span-3">المادة / الصفوف / الفصول</div>
+              <div className="col-span-1">الحالة</div>
               <div className="col-span-1 text-center">إجراءات</div>
             </div>
 
@@ -534,26 +601,48 @@ export default function AdminUsersPage() {
                     </span>
                   </div>
 
-                  <div className="md:col-span-2">
-                    {u.grade ? (
+                  <div className="md:col-span-3">
+                    {u.role === "student" && u.grade ? (
                       <p className="text-xs text-gray-600">
                         صف {u.grade} — فصل {u.class || "—"}
                       </p>
-                    ) : u.subject ? (
-                      <p className="text-xs text-gray-600">
-                        {u.subject}
-                        {u.grades && u.grades.length > 0 && (
-                          <span className="block text-[10px] text-gray-400 mt-0.5">
-                            {u.grades.length} صف • {u.classes?.length || 0} فصل
-                          </span>
+                    ) : u.role === "teacher" ? (
+                      <div className="text-xs space-y-0.5">
+                        {u.subject && (
+                          <p className="font-medium text-sky-700">
+                            📚 {u.subject}
+                          </p>
                         )}
-                      </p>
+                        {u.grades_classes &&
+                          Object.keys(u.grades_classes).length > 0 && (
+                            <>
+                              {Object.entries(u.grades_classes).map(
+                                ([g, cls]) => (
+                                  <p
+                                    key={g}
+                                    className="text-[10px] text-gray-500"
+                                  >
+                                    {allGrades.find((x) => x.value === g)
+                                      ?.label || `صف ${g}`}
+                                    : {(cls as string[]).join("، ") || "—"}
+                                  </p>
+                                )
+                              )}
+                            </>
+                          )}
+                        {(!u.grades_classes ||
+                          Object.keys(u.grades_classes).length === 0) && (
+                          <p className="text-[10px] text-gray-400 italic">
+                            لم يتم تحديد الصفوف
+                          </p>
+                        )}
+                      </div>
                     ) : (
                       <p className="text-xs text-gray-400">—</p>
                     )}
                   </div>
 
-                  <div className="md:col-span-2">
+                  <div className="md:col-span-1">
                     {u.status === "active" ? (
                       <span className="inline-flex items-center gap-1 text-xs text-emerald-600 font-medium">
                         <CheckCircle2 className="w-3 h-3" />
@@ -618,215 +707,275 @@ export default function AdminUsersPage() {
       </div>
 
       {/* Modal - تعديل صلاحيات مدرس */}
-      {editingTeacher && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden my-8"
-          >
-            <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gradient-to-br from-[#1F4A3F] to-[#2E6B5A]">
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-2xl bg-white/10 flex items-center justify-center">
-                  <Settings className="w-6 h-6 text-[#C9A227]" />
+      <AnimatePresence>
+        {editingTeacher && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden my-8"
+            >
+              {/* Header */}
+              <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gradient-to-br from-[#1F4A3F] to-[#2E6B5A]">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-2xl bg-white/10 flex items-center justify-center">
+                    <Settings className="w-6 h-6 text-[#C9A227]" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-xl text-white">
+                      تعديل صلاحيات المدرس
+                    </h3>
+                    <p className="text-xs text-white/60 font-mono">
+                      {editingTeacher.code}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-bold text-xl text-white">
-                    تعديل صلاحيات المدرس
-                  </h3>
-                  <p className="text-xs text-white/60 font-mono">
-                    {editingTeacher.code}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setEditingTeacher(null)}
-                className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-6 max-h-[70vh] overflow-y-auto space-y-5">
-              <div>
-                <label className="block text-sm font-medium text-[#1F4A3F] mb-2">
-                  الاسم الكامل
-                </label>
-                <input
-                  type="text"
-                  value={editForm.full_name}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, full_name: e.target.value })
-                  }
-                  className="w-full px-4 py-3 rounded-2xl bg-white border border-gray-200 focus:border-[#C9A227] focus:ring-2 focus:ring-[#C9A227]/20 outline-none transition-all"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-[#1F4A3F] mb-2">
-                  رقم الموبايل
-                </label>
-                <input
-                  type="tel"
-                  value={editForm.phone}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, phone: e.target.value })
-                  }
-                  placeholder="01xxxxxxxxx"
-                  dir="ltr"
-                  className="w-full px-4 py-3 rounded-2xl bg-white border border-gray-200 focus:border-[#C9A227] focus:ring-2 focus:ring-[#C9A227]/20 outline-none transition-all text-left"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-[#1F4A3F] mb-2">
-                  المادة اللي بيدرّسها
-                </label>
-                <select
-                  value={editForm.subject}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, subject: e.target.value })
-                  }
-                  className="w-full px-4 py-3 rounded-2xl bg-white border border-gray-200 focus:border-[#C9A227] focus:ring-2 focus:ring-[#C9A227]/20 outline-none cursor-pointer"
+                <button
+                  onClick={() => setEditingTeacher(null)}
+                  className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition"
                 >
-                  <option value="">اختر المادة</option>
-                  {subjects.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
+                  <X className="w-5 h-5" />
+                </button>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-[#1F4A3F] mb-3">
-                  الصفوف اللي بيدرّسها
-                </label>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                  {allGrades.map((g) => {
-                    const isSelected = editForm.grades.includes(g.value);
-                    return (
-                      <button
-                        key={g.value}
-                        type="button"
-                        onClick={() => toggleGrade(g.value)}
-                        className={`flex items-center gap-2 p-3 rounded-2xl border-2 transition-all ${
-                          isSelected
-                            ? "border-[#1F4A3F] bg-[#1F4A3F]/5"
-                            : "border-gray-200 hover:border-[#C9A227]/40 bg-white"
-                        }`}
-                      >
-                        <div
-                          className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition ${
-                            isSelected
-                              ? "bg-[#1F4A3F] border-[#1F4A3F]"
-                              : "border-gray-300"
-                          }`}
-                        >
-                          {isSelected && (
-                            <CheckCircle2 className="w-3 h-3 text-white" />
-                          )}
-                        </div>
-                        <span
-                          className={`text-sm font-medium ${
-                            isSelected ? "text-[#1F4A3F]" : "text-gray-600"
-                          }`}
-                        >
-                          {g.label}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-[#1F4A3F] mb-3">
-                  الفصول اللي بيدرّسها
-                </label>
-                <div className="flex gap-2 flex-wrap">
-                  {allClasses.map((c) => {
-                    const isSelected = editForm.classes.includes(c);
-                    return (
-                      <button
-                        key={c}
-                        type="button"
-                        onClick={() => toggleClass(c)}
-                        className={`w-12 h-12 rounded-2xl border-2 font-bold transition-all ${
-                          isSelected
-                            ? "border-[#C9A227] bg-[#C9A227] text-white shadow-md"
-                            : "border-gray-200 bg-white text-gray-600 hover:border-[#C9A227]/40"
-                        }`}
-                      >
-                        {c}
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="flex gap-2 mt-3">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setEditForm({ ...editForm, classes: allClasses })
+              {/* Body */}
+              <div className="p-6 max-h-[70vh] overflow-y-auto space-y-5">
+                {/* Full Name */}
+                <div>
+                  <label className="block text-sm font-medium text-[#1F4A3F] mb-2">
+                    الاسم الكامل
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.full_name}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, full_name: e.target.value })
                     }
-                    className="text-xs text-[#1F4A3F] hover:text-[#C9A227] font-medium"
-                  >
-                    اختار الكل
-                  </button>
-                  <span className="text-gray-300">•</span>
-                  <button
-                    type="button"
-                    onClick={() => setEditForm({ ...editForm, classes: [] })}
-                    className="text-xs text-rose-600 hover:text-rose-700 font-medium"
-                  >
-                    إلغاء الكل
-                  </button>
+                    className="w-full px-4 py-3 rounded-2xl bg-white border border-gray-200 focus:border-[#C9A227] focus:ring-2 focus:ring-[#C9A227]/20 outline-none transition-all"
+                  />
                 </div>
+
+                {/* Phone */}
+                <div>
+                  <label className="block text-sm font-medium text-[#1F4A3F] mb-2">
+                    رقم الموبايل
+                  </label>
+                  <input
+                    type="tel"
+                    value={editForm.phone}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, phone: e.target.value })
+                    }
+                    placeholder="01xxxxxxxxx"
+                    dir="ltr"
+                    className="w-full px-4 py-3 rounded-2xl bg-white border border-gray-200 focus:border-[#C9A227] focus:ring-2 focus:ring-[#C9A227]/20 outline-none transition-all text-left"
+                  />
+                </div>
+
+                {/* Subject */}
+                <div>
+                  <label className="block text-sm font-medium text-[#1F4A3F] mb-2">
+                    المادة اللي بيدرّسها
+                  </label>
+                  <select
+                    value={editForm.subject}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, subject: e.target.value })
+                    }
+                    className="w-full px-4 py-3 rounded-2xl bg-white border border-gray-200 focus:border-[#C9A227] focus:ring-2 focus:ring-[#C9A227]/20 outline-none cursor-pointer"
+                  >
+                    <option value="">اختر المادة</option>
+                    {subjects.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Grades + Classes */}
+                <div>
+                  <label className="block text-sm font-medium text-[#1F4A3F] mb-3">
+                    الصفوف والفصول اللي بيدرّسها
+                  </label>
+                  <p className="text-xs text-gray-500 mb-3">
+                    💡 علّم على الصف الأول، وبعدها اختار فصوله من الفصول اللي
+                    هتظهر
+                  </p>
+
+                  <div className="space-y-3">
+                    {allGrades.map((g) => {
+                      const isSelected = !!editForm.gradesData[g.value];
+                      const gradeClasses = editForm.gradesData[g.value] || [];
+                      const isExpanded = editForm.expandedGrade === g.value;
+
+                      return (
+                        <div
+                          key={g.value}
+                          className={`rounded-2xl border-2 transition-all overflow-hidden ${
+                            isSelected
+                              ? "border-[#1F4A3F] bg-[#1F4A3F]/5"
+                              : "border-gray-200 bg-white"
+                          }`}
+                        >
+                          {/* Header الصف */}
+                          <div className="flex items-center gap-3 p-4">
+                            <button
+                              type="button"
+                              onClick={() => toggleGradeSelection(g.value)}
+                              className="flex items-center gap-3 flex-1"
+                            >
+                              <div
+                                className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition ${
+                                  isSelected
+                                    ? "bg-[#1F4A3F] border-[#1F4A3F]"
+                                    : "border-gray-300"
+                                }`}
+                              >
+                                {isSelected && (
+                                  <CheckCircle2 className="w-4 h-4 text-white" />
+                                )}
+                              </div>
+                              <span
+                                className={`font-bold ${
+                                  isSelected
+                                    ? "text-[#1F4A3F]"
+                                    : "text-gray-600"
+                                }`}
+                              >
+                                {g.label}
+                              </span>
+                            </button>
+
+                            {isSelected && (
+                              <>
+                                <span className="text-xs text-[#C9A227] font-medium whitespace-nowrap">
+                                  {gradeClasses.length} فصل
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => toggleExpand(g.value)}
+                                  className="p-2 rounded-lg hover:bg-white transition"
+                                >
+                                  {isExpanded ? (
+                                    <ChevronUp className="w-4 h-4 text-gray-600" />
+                                  ) : (
+                                    <ChevronDown className="w-4 h-4 text-gray-600" />
+                                  )}
+                                </button>
+                              </>
+                            )}
+                          </div>
+
+                          {/* الفصول */}
+                          <AnimatePresence>
+                            {isSelected && isExpanded && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                className="border-t border-[#1F4A3F]/20 bg-white p-4"
+                              >
+                                <div className="flex gap-2 mb-3">
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      selectAllClassesInGrade(g.value)
+                                    }
+                                    className="text-xs text-[#1F4A3F] hover:text-[#C9A227] font-medium"
+                                  >
+                                    ✓ اختار الكل
+                                  </button>
+                                  <span className="text-gray-300">•</span>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      clearClassesInGrade(g.value)
+                                    }
+                                    className="text-xs text-rose-600 hover:text-rose-700 font-medium"
+                                  >
+                                    ✗ إلغاء الكل
+                                  </button>
+                                </div>
+
+                                <div className="flex gap-2 flex-wrap">
+                                  {allClasses.map((c) => {
+                                    const isClassSelected =
+                                      gradeClasses.includes(c);
+                                    return (
+                                      <button
+                                        key={c}
+                                        type="button"
+                                        onClick={() =>
+                                          toggleClassInGrade(g.value, c)
+                                        }
+                                        className={`w-11 h-11 rounded-xl border-2 font-bold text-sm transition-all ${
+                                          isClassSelected
+                                            ? "border-[#C9A227] bg-[#C9A227] text-white shadow-md"
+                                            : "border-gray-200 bg-white text-gray-600 hover:border-[#C9A227]/40"
+                                        }`}
+                                      >
+                                        {c}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Messages */}
+                {modalError && (
+                  <div className="flex items-center gap-2 p-3 rounded-xl bg-rose-50 border border-rose-100 text-rose-700 text-sm">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                    <span>{modalError}</span>
+                  </div>
+                )}
+
+                {modalSuccess && (
+                  <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-700 text-sm">
+                    <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                    <span>{modalSuccess}</span>
+                  </div>
+                )}
               </div>
 
-              {modalError && (
-                <div className="flex items-center gap-2 p-3 rounded-xl bg-rose-50 border border-rose-100 text-rose-700 text-sm">
-                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                  <span>{modalError}</span>
-                </div>
-              )}
-
-              {modalSuccess && (
-                <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-700 text-sm">
-                  <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-                  <span>{modalSuccess}</span>
-                </div>
-              )}
-            </div>
-
-            <div className="p-4 border-t border-gray-100 bg-gray-50 flex gap-3">
-              <button
-                onClick={handleSaveTeacher}
-                disabled={saving}
-                className="flex-1 py-3.5 rounded-2xl bg-gradient-to-br from-[#1F4A3F] to-[#2E6B5A] text-white font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-60"
-              >
-                {saving ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    جاري الحفظ...
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-5 h-5" />
-                    حفظ التعديلات
-                  </>
-                )}
-              </button>
-              <button
-                onClick={() => setEditingTeacher(null)}
-                className="px-6 py-3.5 rounded-2xl bg-white border border-gray-200 text-gray-700 font-medium hover:bg-gray-50 transition"
-              >
-                إلغاء
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
+              {/* Footer */}
+              <div className="p-4 border-t border-gray-100 bg-gray-50 flex gap-3">
+                <button
+                  onClick={handleSaveTeacher}
+                  disabled={saving}
+                  className="flex-1 py-3.5 rounded-2xl bg-gradient-to-br from-[#1F4A3F] to-[#2E6B5A] text-white font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+                >
+                  {saving ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      جاري الحفظ...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-5 h-5" />
+                      حفظ التعديلات
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => setEditingTeacher(null)}
+                  className="px-6 py-3.5 rounded-2xl bg-white border border-gray-200 text-gray-700 font-medium hover:bg-gray-50 transition"
+                >
+                  إلغاء
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </main>
   );
 }

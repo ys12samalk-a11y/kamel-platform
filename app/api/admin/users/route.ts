@@ -11,7 +11,9 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from("users")
-      .select("id, code, role, full_name, grade, class, phone, profile_completed, status, last_login, created_at")
+      .select(
+        "id, code, role, full_name, grade, class, subject, phone, grades, classes, grades_classes, profile_completed, status, last_login, created_at"
+      )
       .order("code", { ascending: true });
 
     if (role && role !== "all") {
@@ -57,24 +59,20 @@ export async function PATCH(request: NextRequest) {
     const { id, updates } = body;
 
     if (!id || !updates) {
-      return NextResponse.json(
-        { error: "البيانات ناقصة" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "البيانات ناقصة" }, { status: 400 });
     }
 
     const { data, error } = await supabase
       .from("users")
       .update(updates)
       .eq("id", id)
-      .select()
+      .select(
+        "id, code, role, full_name, grade, class, subject, phone, grades, classes, grades_classes, profile_completed, status, last_login, created_at, password"
+      )
       .single();
 
     if (error) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
     const { password: _, ...userData } = data;
@@ -104,10 +102,7 @@ export async function DELETE(request: NextRequest) {
     const { error } = await supabase.from("users").delete().eq("id", id);
 
     if (error) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });

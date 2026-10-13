@@ -5,7 +5,15 @@ import { supabase } from "@/lib/supabase";
 export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json();
-    const { code, grades, classes, subject, full_name, phone } = body;
+    const {
+      code,
+      grades,
+      classes,
+      grades_classes,
+      subject,
+      full_name,
+      phone,
+    } = body;
 
     if (!code) {
       return NextResponse.json({ error: "الكود مطلوب" }, { status: 400 });
@@ -15,6 +23,7 @@ export async function PATCH(request: NextRequest) {
 
     if (grades !== undefined) updates.grades = grades;
     if (classes !== undefined) updates.classes = classes;
+    if (grades_classes !== undefined) updates.grades_classes = grades_classes;
     if (subject !== undefined) updates.subject = subject;
     if (full_name !== undefined) updates.full_name = full_name;
     if (phone !== undefined) updates.phone = phone;
@@ -31,7 +40,7 @@ export async function PATCH(request: NextRequest) {
       .update(updates)
       .eq("code", code)
       .select(
-        "id, code, role, full_name, subject, phone, grades, classes, status"
+        "id, code, role, full_name, subject, phone, grades, classes, grades_classes, status"
       )
       .single();
 
