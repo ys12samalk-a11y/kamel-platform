@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -60,7 +60,7 @@ type FinalGrade = {
   created_at: string;
 };
 
-export default function ParentGradesPage() {
+function ParentGradesContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const studentParam = searchParams.get("student");
@@ -531,5 +531,19 @@ export default function ParentGradesPage() {
         )}
       </div>
     </main>
+  );
+}
+
+export default function ParentGradesPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-[#FAFBFC]">
+          <div className="w-8 h-8 border-4 border-[#1F4A3F] border-t-transparent rounded-full animate-spin" />
+        </div>
+      }
+    >
+      <ParentGradesContent />
+    </Suspense>
   );
 }
