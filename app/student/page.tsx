@@ -20,6 +20,7 @@ import {
   FileText,
   Megaphone,
   Settings,
+  MonitorPlay, // <-- تمت إضافة الأيقونة هنا
 } from "lucide-react";
 
 type UserData = {
@@ -117,6 +118,14 @@ const quickCards = [
     desc: "شارك واكسب جوائز",
     color: "from-yellow-400 to-amber-500",
     href: "/student/competitions",
+  },
+  // الكارت الجديد الخاص بمنصة Qureo
+  {
+    icon: MonitorPlay,
+    title: "منصة Qureo",
+    desc: "أكوادك للبرمجة والذكاء الاصطناعي",
+    color: "from-purple-400 to-indigo-500",
+    href: "/student/qureo",
   },
 ];
 
