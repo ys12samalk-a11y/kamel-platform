@@ -18,6 +18,7 @@ import {
   Filter,
   GraduationCap,
 } from "lucide-react";
+import { ALL_SUBJECTS } from "@/lib/subjects";
 
 type LibraryFile = {
   id: string;
@@ -32,19 +33,6 @@ type LibraryFile = {
   download_count: number;
   created_at: string;
 };
-
-const subjects = [
-  "عربي",
-  "إنجليزي",
-  "رياضيات",
-  "علوم",
-  "دراسات",
-  "دين",
-  "حاسب آلي",
-  "أحياء",
-  "فيزياء",
-  "كيمياء",
-];
 
 const grades = [
   { value: "1", label: "الصف الأول الثانوي" },
@@ -304,7 +292,7 @@ export default function AdminLibraryPage() {
                   className="w-full px-4 py-3.5 rounded-2xl bg-white border border-gray-200 focus:border-[#C9A227] focus:ring-2 focus:ring-[#C9A227]/20 outline-none cursor-pointer"
                 >
                   <option value="">اختر المادة</option>
-                  {subjects.map((s) => (
+                  {ALL_SUBJECTS.map((s) => (
                     <option key={s} value={s}>
                       {s}
                     </option>
@@ -474,7 +462,7 @@ export default function AdminLibraryPage() {
             >
               كل المواد
             </button>
-            {subjects.map((s) => (
+            {ALL_SUBJECTS.map((s) => (
               <button
                 key={s}
                 onClick={() => setSubjectFilter(s)}

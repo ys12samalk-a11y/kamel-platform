@@ -16,6 +16,7 @@ import {
   Menu,
   X,
   User,
+  Users,
   FileText,
   Megaphone,
   Settings,
@@ -67,6 +68,12 @@ const menuItems = [
     label: "جدول الحصص",
     href: "/student/schedule",
     color: "from-emerald-400 to-teal-500",
+  },
+  {
+    icon: Users,
+    label: "دليل المدرسين",
+    href: "/student/teachers",
+    color: "from-cyan-400 to-sky-500",
   },
   {
     icon: MessageSquare,

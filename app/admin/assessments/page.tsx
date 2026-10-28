@@ -16,6 +16,7 @@ import {
   Trash2,
   BookOpen,
 } from "lucide-react";
+import { ALL_SUBJECTS } from "@/lib/subjects";
 
 type Assessment = {
   id: string;
@@ -31,16 +32,6 @@ type Assessment = {
   download_count: number;
   created_at: string;
 };
-
-const subjects = [
-  "عربي",
-  "إنجليزي",
-  "رياضيات",
-  "علوم",
-  "دراسات",
-  "دين",
-  "حاسب آلي",
-];
 
 const grades = [
   { value: "1", label: "الصف الأول الثانوي" },
@@ -277,7 +268,7 @@ export default function AdminAssessmentsPage() {
                   className="w-full px-4 py-3.5 rounded-2xl bg-white border border-gray-200 focus:border-[#C9A227] focus:ring-2 focus:ring-[#C9A227]/20 outline-none transition-all cursor-pointer"
                 >
                   <option value="">اختر المادة</option>
-                  {subjects.map((s) => (
+                  {ALL_SUBJECTS.map((s) => (
                     <option key={s} value={s}>
                       {s}
                     </option>
@@ -453,7 +444,7 @@ export default function AdminAssessmentsPage() {
                       </h3>
                       <div className="flex flex-wrap gap-2 text-xs">
                         <span className="px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700">
-                          {subjects.includes(a.subject) ? a.subject : a.subject}
+                          {a.subject}
                         </span>
                         <span className="px-2 py-1 rounded-lg bg-amber-50 text-amber-700">
                           {grades.find((g) => g.value === a.grade)?.label ||

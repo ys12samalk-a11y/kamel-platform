@@ -21,6 +21,7 @@ import {
   BookOpen,
   Mail,
 } from "lucide-react";
+import { ALL_SUBJECTS } from "@/lib/subjects";
 
 export default function TeacherSettingsPage() {
   const router = useRouter();
@@ -275,15 +276,20 @@ export default function TeacherSettingsPage() {
               </label>
               <div className="relative">
                 <BookOpen className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
+                <select
                   value={form.subject}
                   onChange={(e) =>
                     setForm({ ...form, subject: e.target.value })
                   }
-                  placeholder="مثال: رياضيات"
-                  className="w-full pr-12 pl-4 py-3.5 rounded-2xl bg-white border border-gray-200 focus:border-[#C9A227] focus:ring-2 focus:ring-[#C9A227]/20 outline-none transition-all"
-                />
+                  className="w-full pr-12 pl-4 py-3.5 rounded-2xl bg-white border border-gray-200 focus:border-[#C9A227] focus:ring-2 focus:ring-[#C9A227]/20 outline-none transition-all cursor-pointer"
+                >
+                  <option value="">اختر المادة</option>
+                  {ALL_SUBJECTS.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
