@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+<<<<<<< HEAD
+=======
+# ملفات الأكواد الحساسة
+students.xlsx
+teachers.xlsx
+*.xlsx
+>>>>>>> beb95aa57e702d2cbe834ff22aa169965dfd9f9c
