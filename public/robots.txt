@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+Disallow: /teacher/
+Disallow: /parent/
+Disallow: /student/
+
+Sitemap: https://kamel-platform.vercel.app/sitemap.xml
